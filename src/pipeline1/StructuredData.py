@@ -66,6 +66,7 @@ class CreditAgeParser(BaseEstimator, TransformerMixin):
             X_copy['Credit_History_Age'] = X_copy['Credit_History_Age'].apply(self.parse_credit_age)
         return X_copy
 
+# Sửa trong file StructuredData.py
 class LoanTypeEncoder(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.mlb = MultiLabelBinarizer()
@@ -81,13 +82,20 @@ class LoanTypeEncoder(BaseEstimator, TransformerMixin):
     
     def _prepare_loan_lists(self, series):
         cleaned = (
-            series.fillna("")
+            series.fillna("Not Specified")  
             .str.replace(" and ", ", ", regex=False)
             .str.replace(r"\s*,\s*", ",", regex=True)
             .str.strip()
             .str.rstrip(",")
         )
-        return cleaned.apply(lambda x: x.split(",") if x else [])
+        
+        def clean_loan_list(x):
+            if x == "Not Specified" or not x:
+                return ["Not Specified"]
+            loans = [loan.strip() for loan in x.split(",") if loan.strip()] 
+            return loans if loans else ["Not Specified"]
+        
+        return cleaned.apply(clean_loan_list)
     
     def transform(self, X):
         X_copy = X.copy()
@@ -98,6 +106,11 @@ class LoanTypeEncoder(BaseEstimator, TransformerMixin):
                 columns=self.mlb.classes_, 
                 index=X_copy.index
             )
+            
+            if '' in loan_dummies.columns:
+                loan_dummies = loan_dummies.drop(columns=[''])
+                print("Removed empty column from loan encoding")
+            
             X_copy = pd.concat([X_copy.drop(columns=["Type_of_Loan"]), loan_dummies], axis=1)
         return X_copy
 
