@@ -87,7 +87,7 @@ def train_tabnet_model(X_train, y_train):
     param_configs = {
         "n_d": 64,  # Width of the decision prediction layer
         "n_a": 64,  # Width of the attention embedding for each mask
-        "n_steps": 10,  # Number of steps in the architecture
+        "n_steps": 15,  # Number of steps in the architecture
         "gamma": 1.5,  # Coefficient for feature reusage in the masks
         "lambda_sparse": 1e-1,  # Sparsity regularization
         "optimizer_fn": torch.optim.Adam,
@@ -110,12 +110,11 @@ def train_tabnet_model(X_train, y_train):
         eval_set=[(X_val_split, y_val_split)],
         eval_name=["val"],
         eval_metric=[TabNetAccuracy],
-        max_epochs=100,
+        max_epochs=200,
         patience=20,
         batch_size=1024,
         virtual_batch_size=128,
         num_workers=0,
-        early_stopping=True,
         drop_last=False,
     )
     print("Training completed!")

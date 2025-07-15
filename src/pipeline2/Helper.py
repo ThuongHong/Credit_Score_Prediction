@@ -25,6 +25,33 @@ from src.pipeline1.StructuredData import (
 )
 from sklearn.pipeline import Pipeline
 
+# TabNet imports
+try:
+    from pytorch_tabnet.tab_model import TabNetClassifier
+    from pytorch_tabnet.metrics import Metric
+
+    TABNET_AVAILABLE = True
+except ImportError:
+    print("TabNet not installed. Run: pip install pytorch-tabnet")
+    TABNET_AVAILABLE = False
+
+    # Create dummy classes to avoid import errors
+    class Metric:
+        pass
+
+    class TabNetClassifier:
+        def __init__(self, **kwargs):
+            pass
+
+        def fit(self, **kwargs):
+            pass
+
+        def predict(self, X):
+            return np.zeros(len(X))
+
+        def predict_proba(self, X):
+            return np.zeros((len(X), 3))
+
 
 def create_preprocessing_pipeline():
     """Create the preprocessing pipeline"""
@@ -395,7 +422,7 @@ def save_model_and_pipeline(
     missing_fill_strategy,
     importance_df,
     accuracy,
-    model_name="xgboost_model",
+    model_name="xgboost",
 ):
     """Save all model components for future use"""
 
@@ -412,10 +439,15 @@ def save_model_and_pipeline(
     joblib.dump(preprocessing_pipeline, pipeline_path)
     print(f"Preprocessing pipeline saved to: {pipeline_path}")
 
-    # Save XGBoost model
-    model_path = os.path.join(models_dir, f"{model_name}.pkl")
-    joblib.dump(model, model_path)
-    print(f"XGBoost model saved to: {model_path}")
+    # Save model
+    if model_name == "tabnet":
+        # TabNet models may require special handling
+        model_path = os.path.join(models_dir, f"{model_name}")
+        model.save_model(model_path)
+    else:
+        model_path = os.path.join(models_dir, f"{model_name}.pkl")
+        joblib.dump(model, model_path)
+    print(f"Model saved to: {model_path}")
 
     # Save scaler
     scaler_path = os.path.join(models_dir, f"{model_name}_scaler.pkl")
@@ -431,7 +463,7 @@ def save_model_and_pipeline(
         "numeric_features": numeric_features,
         "outlier_bounds": outlier_bounds,
         "missing_fill_strategy": missing_fill_strategy,
-        "model_params": model.get_params(),
+        "model_params": model.get_params() if hasattr(model, "get_params") else {},
     }
 
     info_path = os.path.join(models_dir, f"{model_name}_info.pkl")
@@ -441,7 +473,14 @@ def save_model_and_pipeline(
     return model_path, pipeline_path, scaler_path, info_path
 
 
-def predict_new_data(new_data_path, model_path, pipeline_path, scaler_path, info_path):
+def predict_new_data(
+    new_data_path,
+    model_path,
+    pipeline_path,
+    scaler_path,
+    info_path,
+    model_type="not_tabnet",
+):
     """Make predictions on new data using saved components"""
 
     print("\n" + "=" * 50)
@@ -449,6 +488,11 @@ def predict_new_data(new_data_path, model_path, pipeline_path, scaler_path, info
     print("=" * 50)
 
     # Load saved components
+    if model_type == "tabnet":
+        # TabNet models may require special handling
+        model = TabNetClassifier()
+        model.load_model(model_path)
+        print("✅ TabNet loaded with joblib")
     model = joblib.load(model_path)
     preprocessing_pipeline = joblib.load(pipeline_path)
     scaler = joblib.load(scaler_path)
@@ -569,7 +613,7 @@ def evaluate_model(model, X_test, y_test, model_type="default"):
     try:
         if hasattr(model, "predict") and hasattr(model, "predict_proba"):
             # For sklearn-compatible models (XGBoost, RandomForest)
-            if isinstance(X_test, pd.DataFrame):
+            if model_type not in ["tabnet"]:
                 y_pred = model.predict(X_test)
                 y_pred_proba = model.predict_proba(X_test)
             else:
