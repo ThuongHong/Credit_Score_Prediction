@@ -53,6 +53,7 @@ def create_pipeline():
         "Total_EMI_per_month",
         "Amount_invested_monthly",
         "Monthly_Balance",
+        "Age",
     ]
 
     # Handle negative values
@@ -69,9 +70,10 @@ def create_pipeline():
         "Credit_Utilization_Ratio",
         "Credit_History_Age",
         "Total_EMI_per_month",
+        "Age",
     ]
 
-    categorical_cols = ["Occupation", "Credit_Mix", "Payment_of_Min_Amount", "Payment_Behaviour"]
+    categorical_cols = ["Month", "Occupation", "Credit_Mix", "Payment_of_Min_Amount", "Payment_Behaviour"]
 
     # Create preprocessing pipeline
     preprocessing_pipeline = Pipeline(
@@ -101,7 +103,7 @@ def load_and_split_data(data_path=None):
     print(f"Raw data loaded: {data.shape}")
 
     # Drop personal information columns
-    columns_to_drop = ["ID", "Customer_ID", "Month", "Name", "Age", "SSN"]
+    columns_to_drop = ["ID", "Customer_ID", "Name", "SSN"]
     existing_columns = [col for col in columns_to_drop if col in data.columns]
     data = data.drop(columns=existing_columns)
     print(f"After dropping personal info: {data.shape}")
@@ -225,8 +227,13 @@ def preprocess_data(
                 processed[col] = pd.Categorical(processed[col]).codes
 
     # Separate features and target
-    X = processed.drop(columns=["Credit_Score"])
-    y = processed["Credit_Score"]
+    try: 
+        X = processed.drop(columns=["Credit_Score"])
+        y = processed["Credit_Score"]
+    except KeyError:
+        print("'Credit_Score' column not found. Using all columns as features.")
+        X = processed
+        y = None
 
     # Outlier handling
     if train:
@@ -259,7 +266,10 @@ def preprocess_data(
             if col in X.columns:
                 X[col] = X[col].clip(lower=bounds["lower"], upper=bounds["upper"])
 
-    print(f"Features shape: {X.shape}, Target shape: {y.shape}")
+    try:
+        print(f"Features shape: {X.shape}, Target shape: {y.shape}")
+    except AttributeError:
+        print(f"Features shape: {X.shape}")
 
     if train:
         return X, y, outlier_bounds, missing_fill_strategy
@@ -278,7 +288,7 @@ def save_pipeline(
     print("=" * 50)
 
     # Save preprocessing pipeline
-    pipeline_path = os.path.join("models", "pipeline.pkl")
+    pipeline_path = os.path.join("..", "models", "pipeline.pkl")
     joblib.dump(preprocessing_pipeline, pipeline_path)
     print(f"Pipeline saved to: {pipeline_path}")
 
@@ -287,7 +297,7 @@ def save_pipeline(
         "outlier_bounds": outlier_bounds,
         "missing_fill_strategy": missing_fill_strategy,
     }
-    info_path = os.path.join("models", "info.pkl")
+    info_path = os.path.join("..", "models", "info.pkl")
     joblib.dump(info, info_path)
     print(f"Model info saved to: {info_path}")
 

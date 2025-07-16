@@ -8,8 +8,8 @@ def objective(trial, X_train, y_train):
 
     # Define hyperparameter search space
     params = {
-        "n_estimators": trial.suggest_int("n_estimators", 100, 1000),
-        "max_depth": trial.suggest_int("max_depth", 3, 20),
+        "n_estimators": trial.suggest_int("n_estimators", 300, 700),
+        "max_depth": trial.suggest_int("max_depth", 15, 20),
         "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
         "subsample": trial.suggest_float("subsample", 0.5, 1.0),
         "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),
@@ -26,7 +26,7 @@ def objective(trial, X_train, y_train):
 
     # Use cross-validation to evaluate model performance
     cv_scores = cross_val_score(
-        model, X_train, y_train, cv=3, scoring="accuracy", n_jobs=-1
+        model, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1
     )
 
     return cv_scores.mean()
@@ -66,26 +66,29 @@ def train_xgboost_model_with_optuna(X_train, y_train, n_trials=100):
     return final_model, best_params, study
 
 
-def train_xgboost_model(X_train, y_train):
+def train_xgboost_model(X_train, y_train, best_params=None):
     """Train XGBoost model with default parameters (original function)"""
 
     print("\n" + "=" * 40)
     print("TRAINING XGBOOST MODEL")
     print("=" * 40)
 
-    param_configs = {
-        "n_estimators": 350,
-        "max_depth": 15,
-        "learning_rate": 0.02,
-        "subsample": 0.7,
-        "colsample_bytree": 0.6,
-        "min_child_weight": 1,
-        "gamma": 0.0,
-        "reg_alpha": 0.2,
-        "reg_lambda": 0.8,
-        "random_state": 42,
-        "eval_metric": "mlogloss",
-    }
+    if best_params:
+        param_configs = best_params
+    else:
+        param_configs = {
+            "n_estimators": 350,
+            "max_depth": 15,
+            "learning_rate": 0.02,
+            "subsample": 0.7,
+            "colsample_bytree": 0.6,
+            "min_child_weight": 1,
+            "gamma": 0.0,
+            "reg_alpha": 0.2,
+            "reg_lambda": 0.8,
+            "random_state": 42,
+            "eval_metric": "mlogloss",
+        }
 
     # Create XGBoost model
     model = xgb.XGBClassifier(**param_configs)
