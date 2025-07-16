@@ -84,6 +84,3 @@ Model performance is evaluated using:
 - `learning_rate`: 0.01-0.3 (log scale)
 - `subsample`, `colsample_bytree`: 0.5-1.0
 - Regularization: `reg_alpha`, `reg_lambda`
-
-## License
-MIT License
